@@ -22,5 +22,8 @@ if password and not User.objects.filter(username=username).exists():
     print("Admin account verified.")
 EOF
 
+python import_subjects.py
 # 3. Keep this for Free Tier stability
 python bulk_import.py
+
+echo "Data synchronization complete!"
