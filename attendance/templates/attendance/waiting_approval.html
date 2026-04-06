@@ -1,0 +1,156 @@
+{% extends 'attendance/base.html' %}
+{% block title %}Pending Approval | SRMCEM{% endblock %}
+
+{% block extra_head %}
+<style>
+    .wait-wrap {
+        min-height: 60vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .wait-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 48px 40px;
+        text-align: center;
+        max-width: 520px;
+        width: 100%;
+        box-shadow: var(--shadow);
+    }
+    .wait-icon {
+        width: 80px;
+        height: 80px;
+        background: #FFFBEB;
+        border: 2px solid #FCD34D;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin-bottom: 24px;
+        animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+        0%,100% { box-shadow: 0 0 0 0 rgba(245,166,35,.3); }
+        50%      { box-shadow: 0 0 0 14px rgba(245,166,35,0); }
+    }
+    .wait-card h2 { font-size: 1.5rem; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+    .wait-card .sub { color: var(--text-muted); font-size: .9rem; line-height: 1.6; margin-bottom: 28px; }
+
+    .steps-list { text-align: left; margin-bottom: 28px; }
+    .step-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .step-item:last-child { border-bottom: none; }
+    .step-num {
+        width: 28px; height: 28px;
+        border-radius: 99px;
+        background: var(--navy);
+        color: var(--gold);
+        display: flex; align-items: center; justify-content: center;
+        font-size: .78rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    .step-done { background: #22C55E; color: #fff; }
+    .step-active { background: var(--gold); color: var(--navy); }
+    .step-text { font-size: .875rem; color: var(--text); padding-top: 4px; }
+    .step-text strong { color: var(--navy); }
+
+    .alert-pending {
+        background: #FFFBEB;
+        border: 1px solid #FCD34D;
+        border-radius: 10px;
+        padding: 14px 18px;
+        font-size: .875rem;
+        color: #92400E;
+        margin-bottom: 24px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .btn-renotify {
+        background: var(--gold);
+        color: var(--navy);
+        border: none;
+        border-radius: 12px;
+        padding: 12px 28px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: .9rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all .2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 12px;
+    }
+    .btn-renotify:hover {
+        background: var(--gold-light);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(245,166,35,.35);
+    }
+    .btn-logout-sm {
+        color: var(--text-muted);
+        font-size: .82rem;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .btn-logout-sm:hover { color: var(--navy); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wait-wrap animate-up">
+    <div class="wait-card">
+        <div class="wait-icon">⏳</div>
+        <h2>Account Pending Approval</h2>
+        <p class="sub">
+            Welcome, <strong>{{ user.get_full_name|default:user.username }}</strong>! Your registration was successful. The Super Admin will review and approve your account shortly.
+        </p>
+
+        <div class="alert-pending">
+            <i class="bi bi-clock-history" style="flex-shrink:0;margin-top:1px;font-size:1rem;"></i>
+            <div>Typical approval time is <strong>2–4 hours</strong> during working hours (Mon–Sat, 9 AM–5 PM).</div>
+        </div>
+
+        <div class="steps-list">
+            <div class="step-item">
+                <div class="step-num step-done"><i class="bi bi-check-lg"></i></div>
+                <div class="step-text"><strong>Registration Complete</strong><br>Your account has been created.</div>
+            </div>
+            <div class="step-item">
+                <div class="step-num step-active">2</div>
+                <div class="step-text"><strong>Admin Review</strong> (Current step)<br>Super Admin will verify your credentials.</div>
+            </div>
+            <div class="step-item">
+                <div class="step-num">3</div>
+                <div class="step-text"><strong>Access Granted</strong><br>You'll be able to mark attendance and generate reports.</div>
+            </div>
+        </div>
+
+        <form method="POST" action="{% url 'renotify_admin' %}" style="display:block;">
+            {% csrf_token %}
+            <button type="submit" class="btn-renotify">
+                <i class="bi bi-bell"></i> Re-notify Admin
+            </button>
+        </form>
+
+        <a href="{% url 'logout' %}" class="btn-logout-sm">
+            <i class="bi bi-box-arrow-right"></i> Log out and check back later
+        </a>
+    </div>
+</div>
+{% endblock %}

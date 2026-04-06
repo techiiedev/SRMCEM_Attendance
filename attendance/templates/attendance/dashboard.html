@@ -1,0 +1,435 @@
+{% extends 'attendance/base.html' %}
+{% block title %}Dashboard | SRMCEM Attendance{% endblock %}
+
+{% block extra_head %}
+<style>
+    .dash-header {
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+        border-radius: var(--radius-lg);
+        padding: 28px 32px;
+        color: #fff;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+    }
+    .dash-header::after {
+        content: '\F3D1';
+        font-family: 'bootstrap-icons';
+        position: absolute;
+        right: -10px;
+        bottom: -20px;
+        font-size: 9rem;
+        color: rgba(255,255,255,.04);
+        pointer-events: none;
+    }
+    .dash-header h2 { font-size: 1.5rem; font-weight: 700; }
+    .dash-header p  { color: rgba(255,255,255,.6); font-size: .875rem; margin: 0; }
+    .time-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.15);
+        border-radius: 99px;
+        padding: 5px 14px;
+        font-size: .78rem;
+        color: rgba(255,255,255,.8);
+        margin-bottom: 12px;
+    }
+
+    /* Stat cards */
+    .scard {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 22px 24px;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        transition: transform .2s, box-shadow .2s;
+    }
+    .scard:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .scard .sc-icon {
+        width: 44px; height: 44px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem;
+        margin-bottom: 14px;
+    }
+    .scard .sc-val { font-size: 2rem; font-weight: 700; letter-spacing: -1px; color: var(--navy); }
+    .scard .sc-lbl { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin-top: 2px; }
+    .scard-accent { position: absolute; bottom: 0; right: 0; width: 80px; height: 80px; border-radius: 50%; opacity: .08; transform: translate(30%,30%); }
+
+    /* Quick links */
+    .qlink {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        text-decoration: none;
+        color: var(--text);
+        transition: all .2s;
+    }
+    .qlink:hover {
+        border-color: var(--navy);
+        color: var(--navy);
+        box-shadow: var(--shadow);
+        transform: translateX(3px);
+    }
+    .qlink .ql-icon {
+        width: 40px; height: 40px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+    .qlink .ql-title { font-weight: 600; font-size: .9rem; }
+    .qlink .ql-sub   { font-size: .78rem; color: var(--text-muted); }
+
+    /* Take attendance card */
+    .att-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        height: 100%;
+    }
+
+    /* Pending approvals panel */
+    .pending-card {
+        background: #FFFBEB;
+        border: 1.5px solid #FCD34D;
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .pending-card h5 { color: #92400E; font-weight: 700; margin-bottom: 16px; }
+    .pending-row {
+        background: #fff;
+        border: 1px solid #FDE68A;
+        border-radius: 10px;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .pending-row:last-child { margin-bottom: 0; }
+    .pending-name { font-weight: 600; font-size: .9rem; color: var(--navy); }
+    .pending-meta { font-size: .78rem; color: var(--text-muted); margin-top: 2px; }
+    .btn-approve {
+        background: #22C55E;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 6px 14px;
+        font-size: .8rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background .2s;
+    }
+    .btn-approve:hover { background: #16A34A; color: #fff; }
+    .btn-reject {
+        background: #FEE2E2;
+        color: #B91C1C;
+        border: none;
+        border-radius: 8px;
+        padding: 6px 14px;
+        font-size: .8rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background .2s;
+    }
+    .btn-reject:hover { background: #FECACA; color: #991B1B; }
+
+    /* Recent records table */
+    .recent-table { font-size: .875rem; }
+
+    /* Subject select dropdown styling */
+    select option { padding: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- DASHBOARD HEADER -->
+<div class="dash-header animate-up">
+    <div class="time-chip">
+        <i class="bi bi-clock"></i>
+        <span id="liveTime">--:--</span> &nbsp;·&nbsp; <span id="liveDate">---</span>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h2>Good {% now "H" as hour %}{% if hour < "12" %}Morning{% elif hour < "17" %}Afternoon{% else %}Evening{% endif %}, {{ user.get_full_name|default:user.username }} 👋</h2>
+            <p>
+                {% if user.is_superuser %}
+                    Super Admin &nbsp;·&nbsp; Full system access
+                {% else %}
+                    Faculty &nbsp;·&nbsp; SRMCEM Attendance System
+                {% endif %}
+            </p>
+        </div>
+        {% if user.is_superuser %}
+        <a href="/admin/" target="_blank"
+           style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:10px;padding:9px 18px;text-decoration:none;font-size:.85rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+            <i class="bi bi-terminal"></i> Django Admin
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+{% if user.is_superuser and pending_teachers %}
+<!-- PENDING APPROVALS PANEL (SUPERUSER ONLY) -->
+<div class="pending-card animate-up delay-1">
+    <h5>
+        <i class="bi bi-person-exclamation me-2"></i>
+        Pending Teacher Approvals
+        <span style="background:#F59E0B;color:#fff;font-size:.72rem;padding:3px 10px;border-radius:99px;margin-left:8px;">{{ pending_teachers|length }}</span>
+    </h5>
+    {% for teacher in pending_teachers %}
+    <div class="pending-row">
+        <div>
+            <div class="pending-name">
+                <i class="bi bi-person-circle me-1" style="color:#F59E0B;"></i>
+                {{ teacher.get_full_name|default:teacher.username }}
+            </div>
+            <div class="pending-meta">
+                @{{ teacher.username }} &nbsp;·&nbsp; Registered: {{ teacher.date_joined|date:"d M Y" }}
+                {% if teacher.email %}&nbsp;·&nbsp; {{ teacher.email }}{% endif %}
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <form method="POST" action="{% url 'approve_teacher' teacher.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-approve">
+                    <i class="bi bi-check-lg me-1"></i>Approve
+                </button>
+            </form>
+            <form method="POST" action="{% url 'reject_teacher' teacher.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-reject">
+                    <i class="bi bi-x-lg me-1"></i>Reject
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- STAT CARDS -->
+<div class="row g-3 mb-4 animate-up delay-1">
+    <div class="col-6 col-lg-3">
+        <div class="scard">
+            <div class="sc-icon" style="background:#EFF6FF;">
+                <i class="bi bi-calendar-check" style="color:#3B82F6;"></i>
+            </div>
+            <div class="sc-val">{{ total_records|default:"0" }}</div>
+            <div class="sc-lbl">Total Sessions</div>
+            <div class="scard-accent" style="background:#3B82F6;"></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="scard">
+            <div class="sc-icon" style="background:#F0FDF4;">
+                <i class="bi bi-people" style="color:#22C55E;"></i>
+            </div>
+            <div class="sc-val">{{ total_students|default:"0" }}</div>
+            <div class="sc-lbl">Total Students</div>
+            <div class="scard-accent" style="background:#22C55E;"></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="scard">
+            <div class="sc-icon" style="background:#FFF7ED;">
+                <i class="bi bi-book" style="color:#F97316;"></i>
+            </div>
+            <div class="sc-val">{{ subjects|length }}</div>
+            <div class="sc-lbl">Subjects</div>
+            <div class="scard-accent" style="background:#F97316;"></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="scard">
+            <div class="sc-icon" style="background:#FFF1F2;">
+                <i class="bi bi-layers" style="color:#EF4444;"></i>
+            </div>
+            <div class="sc-val">{{ classes|length }}</div>
+            <div class="sc-lbl">Classes</div>
+            <div class="scard-accent" style="background:#EF4444;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN ROW -->
+<div class="row g-4 animate-up delay-2">
+
+    <!-- LEFT: Quick Links -->
+    <div class="col-lg-4">
+        <h6 style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:14px;">Quick Actions</h6>
+        <div class="d-flex flex-column gap-2">
+            <a href="{% url 'reports' %}" class="qlink">
+                <div class="ql-icon" style="background:#EFF6FF;">
+                    <i class="bi bi-bar-chart-fill" style="color:#3B82F6;"></i>
+                </div>
+                <div>
+                    <div class="ql-title">View Reports</div>
+                    <div class="ql-sub">Export PDF &amp; DOCX records</div>
+                </div>
+                <i class="bi bi-chevron-right ms-auto" style="color:var(--text-muted);font-size:.85rem;"></i>
+            </a>
+
+            {% if user.is_superuser %}
+            <a href="{% url 'manage_students' %}" class="qlink">
+                <div class="ql-icon" style="background:#F0FDF4;">
+                    <i class="bi bi-people-fill" style="color:#22C55E;"></i>
+                </div>
+                <div>
+                    <div class="ql-title">Manage Students</div>
+                    <div class="ql-sub">Registry, search &amp; deletion</div>
+                </div>
+                <i class="bi bi-chevron-right ms-auto" style="color:var(--text-muted);font-size:.85rem;"></i>
+            </a>
+
+            <a href="{% url 'manage_teachers' %}" class="qlink">
+                <div class="ql-icon" style="background:#FFFBEB;">
+                    <i class="bi bi-shield-check" style="color:#F59E0B;"></i>
+                </div>
+                <div>
+                    <div class="ql-title">Manage Teachers</div>
+                    <div class="ql-sub">Approvals &amp; accounts
+                        {% if pending_teachers %}<span style="background:#EF4444;color:#fff;font-size:.68rem;padding:2px 7px;border-radius:99px;margin-left:4px;">{{ pending_teachers|length }}</span>{% endif %}
+                    </div>
+                </div>
+                <i class="bi bi-chevron-right ms-auto" style="color:var(--text-muted);font-size:.85rem;"></i>
+            </a>
+
+            <a href="/admin/" target="_blank" class="qlink">
+                <div class="ql-icon" style="background:#F5F3FF;">
+                    <i class="bi bi-gear-fill" style="color:#8B5CF6;"></i>
+                </div>
+                <div>
+                    <div class="ql-title">System Admin</div>
+                    <div class="ql-sub">Django admin panel</div>
+                </div>
+                <i class="bi bi-box-arrow-up-right ms-auto" style="color:var(--text-muted);font-size:.85rem;"></i>
+            </a>
+            {% endif %}
+        </div>
+
+        {% if recent_records %}
+        <div class="mt-4">
+            <h6 style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:12px;">Recent Sessions</h6>
+            {% for r in recent_records|slice:":4" %}
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+                <div style="width:36px;height:36px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi bi-calendar3" style="color:var(--text-muted);font-size:.9rem;"></i>
+                </div>
+                <div style="min-width:0;">
+                    <div style="font-size:.85rem;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.subject.code }} — {{ r.student_class }}</div>
+                    <div style="font-size:.75rem;color:var(--text-muted);">{{ r.date_created|date:"d M, H:i" }}</div>
+                </div>
+                <a href="{% url 'export_pdf' r.id %}" style="margin-left:auto;color:#EF4444;font-size:.82rem;text-decoration:none;flex-shrink:0;" title="Export PDF">
+                    <i class="bi bi-file-earmark-pdf"></i>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- RIGHT: Take Attendance Form -->
+    <div class="col-lg-8">
+        <div class="att-card">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-pencil-square" style="color:var(--navy);"></i>
+                Take Attendance
+            </div>
+            <div class="card-body p-4">
+
+                <form method="POST" id="attendanceForm">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Academic Class</label>
+                            <select name="student_class" class="form-select" required>
+                                <option value="" disabled selected>— Choose Class —</option>
+                                {% for c in classes %}
+                                    <option value="{{ c }}">{{ c }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Subject</label>
+                            <select name="subject" class="form-select" required>
+                                <option value="" disabled selected>— Choose Subject —</option>
+                                {% for s in subjects %}
+                                    <option value="{{ s.id }}">{{ s.code }} — {{ s.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary w-100 py-3 btn-lg" id="openBtn">
+                                <i class="bi bi-pencil-square me-2"></i>Open Attendance Sheet
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="mt-4 pt-3 border-top">
+                    <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:12px;">
+                        Tips for marking attendance
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <div style="background:var(--surface-2);border-radius:10px;padding:12px;font-size:.82rem;color:var(--text-muted);">
+                                <i class="bi bi-hand-index me-1" style="color:var(--navy);"></i>
+                                <strong>Tap</strong> to toggle present/absent
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div style="background:var(--surface-2);border-radius:10px;padding:12px;font-size:.82rem;color:var(--text-muted);">
+                                <i class="bi bi-arrows-expand me-1" style="color:var(--navy);"></i>
+                                <strong>Swipe right</strong> for present
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div style="background:var(--surface-2);border-radius:10px;padding:12px;font-size:.82rem;color:var(--text-muted);">
+                                <i class="bi bi-check2-all me-1" style="color:var(--navy);"></i>
+                                Use <strong>Select All</strong> to mark all
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-light text-center py-3" style="border-top:1px solid var(--border);font-size:.8rem;color:var(--text-muted);border-radius:0 0 var(--radius-lg) var(--radius-lg);">
+                <i class="bi bi-info-circle me-1"></i>
+                Contact Super Admin to add new subjects or classes.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function updateTime() {
+        const now = new Date();
+        const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const h = String(now.getHours()).padStart(2,'0');
+        const m = String(now.getMinutes()).padStart(2,'0');
+        document.getElementById('liveTime').textContent = h + ':' + m;
+        document.getElementById('liveDate').textContent = days[now.getDay()] + ', ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+    }
+    updateTime();
+    setInterval(updateTime, 30000);
+</script>
+{% endblock %}

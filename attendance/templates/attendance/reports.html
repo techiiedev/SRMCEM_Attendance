@@ -1,0 +1,280 @@
+{% extends 'attendance/base.html' %}
+{% block title %}Attendance Reports | SRMCEM{% endblock %}
+
+{% block extra_head %}
+<style>
+    .reports-header {
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+        border-radius: var(--radius-lg);
+        padding: 28px 32px;
+        color: #fff;
+        margin-bottom: 28px;
+    }
+    .reports-header h2 { font-size: 1.5rem; font-weight: 700; }
+    .reports-header p  { color: rgba(255,255,255,.6); font-size: .875rem; margin: 0; }
+
+    .filter-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 20px 24px;
+        margin-bottom: 20px;
+    }
+
+    .record-row {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        transition: box-shadow .2s, border-color .2s;
+    }
+    .record-row:hover {
+        border-color: var(--navy);
+        box-shadow: 0 4px 16px rgba(11,31,75,.08);
+    }
+
+    .rec-date-badge {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 14px;
+        text-align: center;
+        flex-shrink: 0;
+        min-width: 64px;
+    }
+    .rec-date-badge .day   { font-size: 1.3rem; font-weight: 700; color: var(--navy); line-height: 1; }
+    .rec-date-badge .month { font-size: .72rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: .5px; margin-top: 2px; }
+
+    .rec-info { flex: 1; min-width: 150px; }
+    .rec-info .subject { font-weight: 700; font-size: .95rem; color: var(--navy); }
+    .rec-info .meta    { font-size: .78rem; color: var(--text-muted); margin-top: 3px; }
+
+    .rec-stats {
+        display: flex;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+    .rs-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 12px;
+        border-radius: 99px;
+        font-size: .78rem;
+        font-weight: 700;
+    }
+    .rs-present { background: #DCFCE7; color: #15803D; }
+    .rs-absent  { background: #FEE2E2; color: #B91C1C; }
+
+    .rec-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .btn-pdf  { background: #FEE2E2; color: #B91C1C; }
+    .btn-pdf:hover  { background: #FECACA; color: #991B1B; }
+    .btn-docx { background: #DBEAFE; color: #1E40AF; }
+    .btn-docx:hover { background: #BFDBFE; color: #1E3A8A; }
+
+    .empty-state {
+        text-align: center;
+        padding: 64px 24px;
+        color: var(--text-muted);
+    }
+    .empty-state i { font-size: 3rem; margin-bottom: 16px; display: block; color: var(--border); }
+    .empty-state h4 { font-size: 1.1rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; }
+
+    .record-count {
+        font-size: .82rem;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- HEADER -->
+<div class="reports-header animate-up">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h2><i class="bi bi-bar-chart-fill me-2" style="color:var(--gold);"></i>Attendance Reports</h2>
+            <p>View, filter, and export all attendance records.</p>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-sm" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;">
+            <i class="bi bi-arrow-left me-1"></i>Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-card animate-up delay-1">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label">Search by class / subject / teacher</label>
+            <div style="position:relative;">
+                <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);"></i>
+                <input type="text" id="reportSearch" class="form-control" style="padding-left:36px;" placeholder="Type to filter…" oninput="filterRecords(this.value)">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Class</label>
+            <select id="classFilter" class="form-select" onchange="filterRecords()">
+                <option value="">All Classes</option>
+                {% for r in records %}
+                <option value="{{ r.student_class }}">{{ r.student_class }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Sort By</label>
+            <select id="sortFilter" class="form-select" onchange="sortRecords()">
+                <option value="date-desc">Date (Newest first)</option>
+                <option value="date-asc">Date (Oldest first)</option>
+                <option value="class">Class</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-sm w-100" style="background:var(--surface-2);border:1px solid var(--border);" onclick="clearFilters()">
+                <i class="bi bi-x-circle me-1"></i>Clear
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- RECORDS LIST -->
+<div class="animate-up delay-2">
+    <div class="record-count" id="recordCount">
+        {{ records|length }} record{{ records|length|pluralize }} found
+    </div>
+
+    <div id="recordsList">
+        {% for r in records %}
+        <div class="record-row"
+             data-class="{{ r.student_class|lower }}"
+             data-subject="{{ r.subject.name|lower }} {{ r.subject.code|lower }}"
+             data-teacher="{{ r.teacher.get_full_name|lower|default:r.teacher.username|lower }}"
+             data-date="{{ r.date_created|date:'Y-m-d' }}">
+
+            <!-- Date badge -->
+            <div class="rec-date-badge">
+                <div class="day">{{ r.date_created|date:"d" }}</div>
+                <div class="month">{{ r.date_created|date:"M Y" }}</div>
+            </div>
+
+            <!-- Info -->
+            <div class="rec-info">
+                <div class="subject">
+                    {{ r.subject.name }}
+                    <span style="background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:.72rem;font-weight:600;color:var(--text-muted);margin-left:6px;">
+                        {{ r.subject.code }}
+                    </span>
+                </div>
+                <div class="meta">
+                    <i class="bi bi-mortarboard me-1"></i>{{ r.student_class }}
+                    &nbsp;·&nbsp;
+                    <i class="bi bi-person me-1"></i>{{ r.teacher.get_full_name|default:r.teacher.username }}
+                    &nbsp;·&nbsp;
+                    <i class="bi bi-clock me-1"></i>{{ r.date_created|date:"H:i" }}
+                </div>
+            </div>
+
+            <!-- Attendance stats -->
+            <div class="rec-stats d-none d-sm-flex">
+                {% with present=r.statuses.filter.is_present %}
+                <span class="rs-pill rs-present">
+                    <i class="bi bi-check-circle-fill"></i>
+                    {{ r.statuses.all|length }} students
+                </span>
+                {% endwith %}
+            </div>
+
+            <!-- Export buttons -->
+            <div class="rec-actions">
+                <a href="{% url 'export_pdf' r.id %}" class="btn btn-sm btn-pdf" title="Export PDF">
+                    <i class="bi bi-file-earmark-pdf-fill me-1"></i>PDF
+                </a>
+                <a href="{% url 'export_docx' r.id %}" class="btn btn-sm btn-docx" title="Export DOCX">
+                    <i class="bi bi-file-earmark-word-fill me-1"></i>DOCX
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <i class="bi bi-journal-x"></i>
+            <h4>No records found</h4>
+            <p>No attendance sessions have been recorded yet. Start marking attendance from the Dashboard.</p>
+            <a href="{% url 'dashboard' %}" class="btn btn-primary mt-2">Go to Dashboard</a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="empty-state" id="noResults" style="display:none;">
+        <i class="bi bi-search"></i>
+        <h4>No matching records</h4>
+        <p>Try adjusting your search or filter.</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filterRecords(q) {
+        const search  = (document.getElementById('reportSearch').value || '').toLowerCase();
+        const cls     = (document.getElementById('classFilter').value || '').toLowerCase();
+        const rows    = document.querySelectorAll('#recordsList .record-row');
+        let visible   = 0;
+
+        rows.forEach(row => {
+            const rowClass   = row.dataset.class   || '';
+            const rowSubject = row.dataset.subject  || '';
+            const rowTeacher = row.dataset.teacher  || '';
+
+            const matchSearch = !search || rowClass.includes(search) || rowSubject.includes(search) || rowTeacher.includes(search);
+            const matchClass  = !cls    || rowClass === cls;
+
+            if (matchSearch && matchClass) {
+                row.style.display = '';
+                visible++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        document.getElementById('noResults').style.display  = visible === 0 ? 'block' : 'none';
+        document.getElementById('recordCount').textContent   = visible + ' record' + (visible !== 1 ? 's' : '') + ' found';
+    }
+
+    function sortRecords() {
+        const sort   = document.getElementById('sortFilter').value;
+        const list   = document.getElementById('recordsList');
+        const rows   = Array.from(list.querySelectorAll('.record-row'));
+
+        rows.sort((a, b) => {
+            if (sort === 'date-desc') return b.dataset.date.localeCompare(a.dataset.date);
+            if (sort === 'date-asc')  return a.dataset.date.localeCompare(b.dataset.date);
+            if (sort === 'class')     return a.dataset.class.localeCompare(b.dataset.class);
+            return 0;
+        });
+
+        rows.forEach(r => list.appendChild(r));
+    }
+
+    function clearFilters() {
+        document.getElementById('reportSearch').value = '';
+        document.getElementById('classFilter').value  = '';
+        filterRecords();
+    }
+
+    // Remove duplicate class options
+    const classFilter = document.getElementById('classFilter');
+    const seen = new Set();
+    Array.from(classFilter.options).forEach(opt => {
+        if (seen.has(opt.value)) { opt.remove(); }
+        else { seen.add(opt.value); }
+    });
+</script>
+{% endblock %}

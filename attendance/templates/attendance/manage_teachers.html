@@ -1,0 +1,273 @@
+{% extends 'attendance/base.html' %}
+{% block title %}Manage Teachers | SRMCEM{% endblock %}
+
+{% block extra_head %}
+<style>
+    .page-hero {
+        background: linear-gradient(135deg, #92400E 0%, #B45309 100%);
+        border-radius: var(--radius-lg);
+        padding: 26px 32px;
+        color: #fff;
+        margin-bottom: 24px;
+    }
+    .page-hero h2 { font-size: 1.4rem; font-weight: 700; }
+    .page-hero p  { color: rgba(255,255,255,.6); font-size: .875rem; margin: 0; }
+
+    .tab-pills { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-pill {
+        padding: 8px 18px;
+        border-radius: 99px;
+        font-size: .82rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1.5px solid var(--border);
+        background: var(--surface);
+        color: var(--text-muted);
+        transition: all .2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .tab-pill.active, .tab-pill:hover {
+        background: var(--navy);
+        color: #fff;
+        border-color: var(--navy);
+    }
+    .tab-pill .tc { background: #EF4444; color: #fff; font-size: .68rem; padding: 2px 6px; border-radius: 99px; }
+
+    .teacher-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 12px;
+        transition: box-shadow .2s;
+    }
+    .teacher-card:hover { box-shadow: var(--shadow); }
+    .teacher-row {
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .t-avatar {
+        width: 44px; height: 44px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    .t-av-pending  { background: #FEF9C3; color: #92400E; }
+    .t-av-approved { background: #DCFCE7; color: #15803D; }
+
+    .t-info { flex: 1; min-width: 160px; }
+    .t-name { font-weight: 700; font-size: .95rem; color: var(--navy); }
+    .t-meta { font-size: .78rem; color: var(--text-muted); margin-top: 3px; }
+
+    .t-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 12px;
+        border-radius: 99px;
+        font-size: .75rem;
+        font-weight: 700;
+    }
+    .ts-pending  { background: #FEF9C3; color: #92400E; }
+    .ts-approved { background: #DCFCE7; color: #15803D; }
+
+    .t-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-approve-t {
+        background: #22C55E; color: #fff;
+        border: none; border-radius: 8px;
+        padding: 7px 16px; font-size: .82rem; font-weight: 600;
+        cursor: pointer; transition: background .2s;
+        display: inline-flex; align-items: center; gap: 5px;
+        text-decoration: none;
+    }
+    .btn-approve-t:hover { background: #16A34A; color: #fff; }
+    .btn-reject-t {
+        background: #FEE2E2; color: #B91C1C;
+        border: none; border-radius: 8px;
+        padding: 7px 16px; font-size: .82rem; font-weight: 600;
+        cursor: pointer; transition: background .2s;
+        display: inline-flex; align-items: center; gap: 5px;
+        text-decoration: none;
+    }
+    .btn-reject-t:hover { background: #FECACA; }
+    .btn-revoke-t {
+        background: var(--surface-2); color: var(--text-muted);
+        border: 1px solid var(--border); border-radius: 8px;
+        padding: 7px 16px; font-size: .82rem; font-weight: 600;
+        cursor: pointer; transition: all .2s;
+        display: inline-flex; align-items: center; gap: 5px;
+        text-decoration: none;
+    }
+    .btn-revoke-t:hover { background: #FEE2E2; color: #B91C1C; border-color: #FECACA; }
+
+    .empty-state {
+        text-align: center;
+        padding: 48px 24px;
+        color: var(--text-muted);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+    }
+    .empty-state i { font-size: 2.5rem; display: block; margin-bottom: 12px; color: var(--border); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-hero animate-up">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h2><i class="bi bi-shield-check me-2" style="color:var(--gold);"></i>Teacher Management</h2>
+            <p>Approve, reject, or revoke teacher accounts.</p>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-sm" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;">
+            <i class="bi bi-arrow-left me-1"></i>Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- TABS -->
+<div class="tab-pills animate-up delay-1">
+    <a href="?tab=pending" class="tab-pill {% if tab == 'pending' or not tab %}active{% endif %}">
+        <i class="bi bi-hourglass-split"></i> Pending
+        {% if pending_teachers %}<span class="tc">{{ pending_teachers|length }}</span>{% endif %}
+    </a>
+    <a href="?tab=approved" class="tab-pill {% if tab == 'approved' %}active{% endif %}">
+        <i class="bi bi-check-circle"></i> Approved
+    </a>
+    <a href="?tab=all" class="tab-pill {% if tab == 'all' %}active{% endif %}">
+        <i class="bi bi-people"></i> All Teachers
+    </a>
+</div>
+
+<!-- PENDING TAB -->
+{% if tab == 'pending' or not tab %}
+<div class="animate-up delay-2">
+    {% for teacher in pending_teachers %}
+    <div class="teacher-card">
+        <div class="teacher-row">
+            <div class="t-avatar t-av-pending">{{ teacher.username|first|upper }}</div>
+            <div class="t-info">
+                <div class="t-name">{{ teacher.get_full_name|default:teacher.username }}</div>
+                <div class="t-meta">
+                    <i class="bi bi-at me-1"></i>{{ teacher.username }}
+                    {% if teacher.email %}&nbsp;·&nbsp;<i class="bi bi-envelope me-1"></i>{{ teacher.email }}{% endif %}
+                    &nbsp;·&nbsp;<i class="bi bi-calendar3 me-1"></i>Registered {{ teacher.date_joined|date:"d M Y" }}
+                </div>
+            </div>
+            <span class="t-status ts-pending"><i class="bi bi-clock"></i> Pending</span>
+            <div class="t-actions">
+                <form method="POST" action="{% url 'approve_teacher' teacher.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-approve-t">
+                        <i class="bi bi-check-lg"></i> Approve
+                    </button>
+                </form>
+                <form method="POST" action="{% url 'reject_teacher' teacher.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-reject-t">
+                        <i class="bi bi-x-lg"></i> Reject
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <i class="bi bi-check2-circle"></i>
+        <h5 style="font-weight:600;color:var(--text-muted);">All caught up!</h5>
+        <p>No pending teacher approvals at this time.</p>
+    </div>
+    {% endfor %}
+</div>
+
+{% elif tab == 'approved' %}
+<!-- APPROVED TAB -->
+<div class="animate-up delay-2">
+    {% for teacher in approved_teachers %}
+    <div class="teacher-card">
+        <div class="teacher-row">
+            <div class="t-avatar t-av-approved">{{ teacher.username|first|upper }}</div>
+            <div class="t-info">
+                <div class="t-name">{{ teacher.get_full_name|default:teacher.username }}</div>
+                <div class="t-meta">
+                    <i class="bi bi-at me-1"></i>{{ teacher.username }}
+                    {% if teacher.email %}&nbsp;·&nbsp;<i class="bi bi-envelope me-1"></i>{{ teacher.email }}{% endif %}
+                    &nbsp;·&nbsp;<i class="bi bi-calendar3 me-1"></i>Joined {{ teacher.date_joined|date:"d M Y" }}
+                </div>
+            </div>
+            <span class="t-status ts-approved"><i class="bi bi-check-circle-fill"></i> Approved</span>
+            <div class="t-actions">
+                <form method="POST" action="{% url 'reject_teacher' teacher.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-revoke-t">
+                        <i class="bi bi-shield-x"></i> Revoke Access
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <i class="bi bi-person-x"></i>
+        <h5 style="font-weight:600;color:var(--text-muted);">No approved teachers</h5>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<!-- ALL TAB -->
+<div class="animate-up delay-2">
+    {% for teacher in all_teachers %}
+    <div class="teacher-card">
+        <div class="teacher-row">
+            <div class="t-avatar {% if teacher.is_approved %}t-av-approved{% else %}t-av-pending{% endif %}">
+                {{ teacher.username|first|upper }}
+            </div>
+            <div class="t-info">
+                <div class="t-name">{{ teacher.get_full_name|default:teacher.username }}</div>
+                <div class="t-meta">
+                    <i class="bi bi-at me-1"></i>{{ teacher.username }}
+                    {% if teacher.email %}&nbsp;·&nbsp;<i class="bi bi-envelope me-1"></i>{{ teacher.email }}{% endif %}
+                    &nbsp;·&nbsp;<i class="bi bi-calendar3 me-1"></i>{{ teacher.date_joined|date:"d M Y" }}
+                </div>
+            </div>
+            <span class="t-status {% if teacher.is_approved %}ts-approved{% else %}ts-pending{% endif %}">
+                <i class="bi bi-{% if teacher.is_approved %}check-circle-fill{% else %}clock{% endif %}"></i>
+                {% if teacher.is_approved %}Approved{% else %}Pending{% endif %}
+            </span>
+            <div class="t-actions">
+                {% if not teacher.is_approved %}
+                <form method="POST" action="{% url 'approve_teacher' teacher.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-approve-t"><i class="bi bi-check-lg"></i> Approve</button>
+                </form>
+                {% else %}
+                <form method="POST" action="{% url 'reject_teacher' teacher.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-revoke-t"><i class="bi bi-shield-x"></i> Revoke</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <i class="bi bi-people"></i>
+        <h5 style="font-weight:600;color:var(--text-muted);">No teachers registered yet.</h5>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

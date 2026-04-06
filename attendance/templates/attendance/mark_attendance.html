@@ -1,0 +1,439 @@
+{% extends 'attendance/base.html' %}
+{% block title %}Mark Attendance | {{ s_class }} — {{ subject.code }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Override page-wrapper padding to allow sticky header */
+    .page-wrapper { padding-top: 0 !important; padding-bottom: 0 !important; }
+    .page-wrapper > .container { padding-left: 0 !important; padding-right: 0 !important; max-width: 100% !important; }
+
+    /* STICKY CONTROL HEADER */
+    .att-header {
+        position: sticky;
+        top: 65px; /* below site-nav */
+        z-index: 900;
+        background: rgba(255,255,255,.97);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+        padding: 14px 16px;
+        box-shadow: 0 2px 12px rgba(11,31,75,.08);
+    }
+    .att-header-inner { max-width: 720px; margin: 0 auto; }
+    .att-subject {
+        font-weight: 700;
+        font-size: .95rem;
+        color: var(--navy);
+    }
+    .att-meta { font-size: .8rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* LIVE COUNTER BAR */
+    .counter-bar {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .counter-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 14px;
+        border-radius: 99px;
+        font-size: .82rem;
+        font-weight: 700;
+    }
+    .cp-present { background: #DCFCE7; color: #15803D; }
+    .cp-absent  { background: #FEE2E2; color: #B91C1C; }
+    .cp-total   { background: var(--surface-2); color: var(--text-muted); }
+    .progress-track {
+        flex: 1;
+        height: 6px;
+        background: #FEE2E2;
+        border-radius: 99px;
+        overflow: hidden;
+        min-width: 80px;
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #22C55E, #16A34A);
+        border-radius: 99px;
+        transition: width .3s ease;
+    }
+
+    /* ACTION BUTTONS */
+    .att-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+    .att-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: .8rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all .2s;
+    }
+    .att-btn-present { background: #DCFCE7; color: #15803D; }
+    .att-btn-present:hover { background: #BBF7D0; }
+    .att-btn-absent  { background: #FEE2E2; color: #B91C1C; }
+    .att-btn-absent:hover  { background: #FECACA; }
+
+    /* STUDENT LIST */
+    .student-list {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 16px;
+        padding-bottom: 120px;
+    }
+
+    /* STUDENT CARD */
+    .s-card {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: 14px;
+        padding: 14px 18px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        user-select: none;
+        transition: all .2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-left: 4px solid #EF4444;
+        position: relative;
+        overflow: hidden;
+    }
+    .s-card.present {
+        border-left-color: #22C55E;
+        background: #F0FDF4;
+        border-color: #BBF7D0;
+    }
+    .s-card:active { transform: scale(.98); }
+
+    .s-roll {
+        font-family: 'DM Mono', monospace;
+        font-weight: 500;
+        font-size: .88rem;
+        color: var(--navy);
+        flex-shrink: 0;
+        min-width: 80px;
+    }
+    .s-roll .last3 { font-weight: 700; }
+    .s-roll.present-roll .last3 { color: #22C55E; }
+    .s-roll.absent-roll  .last3 { color: #EF4444; }
+
+    .s-name {
+        font-weight: 600;
+        font-size: .9rem;
+        color: var(--text);
+        flex: 1;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .s-name-sub { font-size: .75rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; }
+
+    .s-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 12px;
+        border-radius: 99px;
+        font-size: .78rem;
+        font-weight: 700;
+        flex-shrink: 0;
+        transition: all .2s;
+    }
+    .s-badge.absent-b  { background: #FEE2E2; color: #B91C1C; }
+    .s-badge.present-b { background: #DCFCE7; color: #15803D; }
+
+    /* SWIPE HINT */
+    .swipe-hint {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-size: .78rem;
+        color: var(--text-muted);
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* SEARCH BAR */
+    .search-wrap {
+        position: relative;
+        margin-bottom: 14px;
+    }
+    .search-wrap input {
+        width: 100%;
+        padding: 10px 14px 10px 38px;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: .9rem;
+        outline: none;
+        transition: border-color .2s;
+        background: var(--surface);
+    }
+    .search-wrap input:focus { border-color: var(--navy); }
+    .search-wrap .si {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: .95rem;
+    }
+
+    /* FLOATING SUBMIT */
+    .float-submit {
+        position: fixed;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        width: calc(100% - 32px);
+        max-width: 688px;
+    }
+    .btn-submit-att {
+        width: 100%;
+        padding: 15px;
+        background: var(--navy);
+        color: #fff;
+        border: none;
+        border-radius: 14px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 8px 30px rgba(11,31,75,.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: all .2s;
+    }
+    .btn-submit-att:hover {
+        background: #1E3A7A;
+        transform: translateY(-1px);
+        box-shadow: 0 12px 40px rgba(11,31,75,.4);
+    }
+    .btn-submit-att:active { transform: scale(.99); }
+
+    /* Empty search state */
+    .empty-search {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-muted);
+        display: none;
+    }
+    .empty-search i { font-size: 2.5rem; margin-bottom: 12px; display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- STICKY HEADER -->
+<div class="att-header">
+    <div class="att-header-inner">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+            <div>
+                <div class="att-subject">
+                    <i class="bi bi-book me-1" style="color:var(--gold);"></i>
+                    {{ subject.name }} <span style="color:var(--text-muted);font-weight:400;">({{ subject.code }})</span>
+                </div>
+                <div class="att-meta">
+                    Class: <strong>{{ s_class }}</strong> &nbsp;·&nbsp; {{ students.count }} students
+                </div>
+            </div>
+            <a href="{% url 'dashboard' %}" class="btn btn-sm" style="background:var(--surface-2);border:1px solid var(--border);color:var(--text-muted);white-space:nowrap;">
+                <i class="bi bi-x-lg me-1"></i>Cancel
+            </a>
+        </div>
+
+        <!-- PROGRESS BAR + COUNTERS -->
+        <div class="counter-bar">
+            <span class="counter-pill cp-present">
+                <i class="bi bi-check-circle-fill"></i>
+                <span id="presentCount">0</span> Present
+            </span>
+            <span class="counter-pill cp-absent">
+                <i class="bi bi-x-circle-fill"></i>
+                <span id="absentCount">{{ students.count }}</span> Absent
+            </span>
+            <div class="progress-track">
+                <div class="progress-fill" id="progressFill" style="width:0%;"></div>
+            </div>
+            <span class="counter-pill cp-total">{{ students.count }} Total</span>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="att-actions">
+            <button type="button" class="att-btn att-btn-present" onclick="toggleAll(true)">
+                <i class="bi bi-check2-all"></i> Select All
+            </button>
+            <button type="button" class="att-btn att-btn-absent" onclick="toggleAll(false)">
+                <i class="bi bi-x-circle"></i> Clear All
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- STUDENT LIST -->
+<div class="student-list">
+
+    <!-- Search -->
+    <div class="search-wrap">
+        <i class="bi bi-search si"></i>
+        <input type="text" id="studentSearch" placeholder="Search student by name or roll number…" oninput="filterStudents(this.value)">
+    </div>
+
+    <!-- Swipe hint (mobile) -->
+    <div class="swipe-hint d-md-none">
+        <i class="bi bi-hand-index-thumb" style="flex-shrink:0;"></i>
+        <span><strong>Tap</strong> to mark present &nbsp;·&nbsp; <strong>Swipe right</strong> → Present &nbsp;·&nbsp; <strong>Swipe left</strong> → Absent</span>
+    </div>
+
+    <form method="POST" id="attendanceForm">
+        {% csrf_token %}
+
+        {% for student in students %}
+        <div class="s-card" id="card_{{ student.id }}" onclick="toggleCard('{{ student.id }}')">
+            <input class="s-checkbox" type="checkbox" name="present_students" value="{{ student.id }}" style="display:none;">
+
+            <div class="s-roll absent-roll" id="roll_{{ student.id }}">
+                <!-- <span class="base">{{ student.university_roll|slice:":-3" }}</span> -->
+                <span class="last3">{{ student.university_roll|slice:"-3:" }}</span>
+            </div>
+
+            <div style="flex:1;min-width:0;">
+                <div class="s-name">{{ student.first_name|upper }} {{ student.last_name|upper }}</div>
+                <div class="s-name-sub">{{ student.student_class }}</div>
+            </div>
+
+            <span class="s-badge absent-b" id="badge_{{ student.id }}">
+                <i class="bi bi-x-circle-fill"></i> ABSENT
+            </span>
+        </div>
+        {% endfor %}
+
+        <div class="empty-search" id="emptySearch">
+            <i class="bi bi-search"></i>
+            No students match your search.
+        </div>
+    </form>
+</div>
+
+<!-- FLOATING SUBMIT -->
+<div class="float-submit">
+    <button type="submit" form="attendanceForm" class="btn-submit-att" id="submitBtn">
+        <i class="bi bi-check-circle-fill"></i>
+        Submit Attendance &nbsp;·&nbsp; <span id="submitPresentCount">0</span> Present
+    </button>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// const total = {{ students.count }};
+const total = parseInt("{{ students.count|default:0 }}");
+
+
+function toggleCard(id) {
+    const card    = document.getElementById('card_' + id);
+    const checkbox= card.querySelector('.s-checkbox');
+    const badge   = document.getElementById('badge_' + id);
+    const roll    = document.getElementById('roll_' + id);
+    checkbox.checked = !checkbox.checked;
+    applyUI(card, checkbox, badge, roll);
+}
+
+function applyUI(card, checkbox, badge, roll) {
+    if (checkbox.checked) {
+        card.classList.add('present');
+        badge.className = 's-badge present-b';
+        badge.innerHTML = '<i class="bi bi-check-circle-fill"></i> PRESENT';
+        roll.className = 's-roll present-roll';
+    } else {
+        card.classList.remove('present');
+        badge.className = 's-badge absent-b';
+        badge.innerHTML = '<i class="bi bi-x-circle-fill"></i> ABSENT';
+        roll.className = 's-roll absent-roll';
+    }
+    updateCounters();
+}
+
+function toggleAll(status) {
+    document.querySelectorAll('.s-card').forEach(card => {
+        if (card.style.display === 'none') return;
+        const id  = card.id.replace('card_','');
+        const cb  = card.querySelector('.s-checkbox');
+        const bdg = document.getElementById('badge_' + id);
+        const rol = document.getElementById('roll_' + id);
+        cb.checked = status;
+        applyUI(card, cb, bdg, rol);
+    });
+}
+
+function updateCounters() {
+    const presentCount = document.querySelectorAll('.s-checkbox:checked').length;
+    const absentCount  = total - presentCount;
+    document.getElementById('presentCount').textContent = presentCount;
+    document.getElementById('absentCount').textContent  = absentCount;
+    document.getElementById('submitPresentCount').textContent = presentCount;
+    const pct = total > 0 ? (presentCount / total * 100) : 0;
+    document.getElementById('progressFill').style.width = pct + '%';
+}
+
+function filterStudents(q) {
+    q = q.toLowerCase();
+    let visible = 0;
+    document.querySelectorAll('.s-card').forEach(card => {
+        const name = card.querySelector('.s-name').textContent.toLowerCase();
+        const roll = card.querySelector('.s-roll').textContent.toLowerCase();
+        const match = name.includes(q) || roll.includes(q);
+        card.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    document.getElementById('emptySearch').style.display = visible === 0 ? 'block' : 'none';
+}
+
+// Swipe support
+document.querySelectorAll('.s-card').forEach(card => {
+    let startX = 0;
+    card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+    card.addEventListener('touchend', e => {
+        const delta = e.changedTouches[0].clientX - startX;
+        if (Math.abs(delta) < 40) return; // ignore tiny swipes
+        const id  = card.id.replace('card_', '');
+        const cb  = card.querySelector('.s-checkbox');
+        const bdg = document.getElementById('badge_' + id);
+        const rol = document.getElementById('roll_' + id);
+        cb.checked = delta > 0; // right = present, left = absent
+        applyUI(card, cb, bdg, rol);
+    }, { passive: true });
+});
+
+// Keyboard shortcut: Ctrl+Enter to submit
+document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        document.getElementById('attendanceForm').submit();
+    }
+});
+
+// Init
+updateCounters();
+</script>
+{% endblock %}

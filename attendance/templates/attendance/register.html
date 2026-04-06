@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRMCEM | Teacher Registration</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --navy: #0B1F4B; --navy-light: #1E3A7A;
+            --gold: #F5A623; --border: #E2E8F0;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: linear-gradient(135deg, var(--navy) 0%, #1a3a8f 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 16px;
+        }
+        .reg-wrap { width: 100%; max-width: 520px; }
+
+        .reg-logo {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .reg-logo .logo-icon {
+            width: 56px; height: 56px;
+            background: var(--gold);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--navy);
+            margin-bottom: 10px;
+            box-shadow: 0 8px 24px rgba(245,166,35,.35);
+        }
+        .reg-logo h1 { color: #fff; font-size: 1.25rem; font-weight: 700; }
+        .reg-logo p  { color: rgba(255,255,255,.5); font-size: .82rem; }
+
+        .reg-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 36px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.3);
+        }
+        .reg-card h2 { font-size: 1.25rem; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+        .reg-card .sub { color: #718096; font-size: .875rem; margin-bottom: 28px; }
+
+        /* Override Django form paragraph styles */
+        .django-form p { margin-bottom: 16px; }
+        .django-form label {
+            display: block;
+            font-size: .78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: #718096;
+            margin-bottom: 6px;
+        }
+        .django-form input[type=text],
+        .django-form input[type=password],
+        .django-form input[type=email],
+        .django-form select,
+        .django-form textarea {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: .9rem;
+            transition: border-color .2s, box-shadow .2s;
+            outline: none;
+            color: #1A202C;
+        }
+        .django-form input:focus,
+        .django-form select:focus,
+        .django-form textarea:focus {
+            border-color: var(--navy);
+            box-shadow: 0 0 0 3px rgba(11,31,75,.1);
+        }
+        .django-form ul.errorlist {
+            list-style: none;
+            padding: 0;
+            margin: 6px 0 0;
+        }
+        .django-form ul.errorlist li {
+            font-size: .8rem;
+            color: #B91C1C;
+        }
+        .helptext {
+            font-size: .78rem;
+            color: #A0AEC0;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .info-box {
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: .82rem;
+            color: #1E40AF;
+            margin-bottom: 24px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .btn-register {
+            width: 100%;
+            padding: 13px;
+            background: var(--navy);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: .95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-register:hover {
+            background: var(--navy-light);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(11,31,75,.3);
+        }
+        .reg-footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: .85rem;
+            color: #718096;
+        }
+        .reg-footer a {
+            color: var(--navy);
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .reg-footer a:hover { text-decoration: underline; }
+
+        @keyframes fadeUp {
+            from { opacity:0; transform:translateY(20px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .reg-wrap { animation: fadeUp .4s ease both; }
+    </style>
+</head>
+<body>
+<div class="reg-wrap">
+    <div class="reg-logo">
+        <div class="logo-icon"><i class="bi bi-mortarboard-fill"></i></div>
+        <h1>Teacher Registration</h1>
+        <p>Create your faculty account — Admin will verify it shortly</p>
+    </div>
+
+    <div class="reg-card">
+        <h2>Create Account</h2>
+        <p class="sub">Fill in your details below to request access.</p>
+
+        <div class="info-box">
+            <i class="bi bi-info-circle-fill" style="flex-shrink:0;margin-top:1px;"></i>
+            <div>Your account will be reviewed by the Super Admin. You'll receive access within <strong>2–4 hours</strong> after registration.</div>
+        </div>
+
+        <form method="POST" class="django-form">
+            {% csrf_token %}
+            {% for field in form %}
+            <div style="margin-bottom:16px;">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <span class="helptext">{{ field.help_text }}</span>
+                {% endif %}
+                {% if field.errors %}
+                    <ul class="errorlist">
+                        {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+            {% endfor %}
+            <button type="submit" class="btn-register">
+                <i class="bi bi-person-check-fill"></i> Request Access
+            </button>
+        </form>
+
+        <div class="reg-footer">
+            Already have an account? <a href="{% url 'login' %}">Sign in here</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>
